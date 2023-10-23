@@ -1,22 +1,3 @@
-// const Review = require('../models/Review');
-
-// const createReview = async (req, res) => {
-//   const { bookId, userId, rating, reviewText } = req.body;
-//   try {
-//     const newReview = await Review.create({ bookId, userId, rating, reviewText });
-//     res.status(201).json(newReview);
-//   } catch (error) {
-//     res.status(400).json({ error: error.message });
-//   }
-// };
-
-// module.exports = { createReview,};
-
-
-
-
-
-
 const Review = require('../models/Review');
 
 // Create a new review

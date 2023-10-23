@@ -11,6 +11,7 @@ const createOrder = async (req, res) => {
         bookId: book._id,
         title: bookTitles[index],
         quantity: book.quantity,
+        price: book.price,
       })),
       total,
     });
@@ -24,17 +25,39 @@ const createOrder = async (req, res) => {
   }
 };
 
+
 const updateOrderStatus = async (req, res) => {
   try {
     const { orderId, status } = req.body;
 
-    const updatedOrder = await Order.findByIdAndUpdate(
-      orderId,
-      { status },
-      { new: true }
-    );
+    // Find the order by ID
+    const order = await Order.findById(orderId);
 
-    res.status(200).json(updatedOrder);
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Update the order status
+    order.status = status;
+    await order.save();
+
+    res.status(200).json({ status: order.status });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+
+const getAllOrders = async (req, res) => {
+  try {
+    const orders = await Order.find();
+
+    if (!orders || orders.length === 0) {
+      return res.status(404).json({ error: 'No orders found' });
+    }
+
+    res.status(200).json(orders);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Internal Server Error' });
@@ -63,5 +86,6 @@ const getOrderById = async (req, res) => {
 module.exports = {
     createOrder,
     updateOrderStatus,
+    getAllOrders,
     getOrderById,
 };
