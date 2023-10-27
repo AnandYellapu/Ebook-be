@@ -1,12 +1,18 @@
 // controllers/orderController.js
 const Order = require('../models/Order');
-
+const nodemailer = require('nodemailer');
+const { isEmail } = require('validator');
 
 const createOrder = async (req, res) => {
   try {
-    const { cart, total , bookTitles} = req.body;
+    const { cart, total, bookTitles, paymentMethod, billingDetails, userEmail } = req.body;
 
-    const order = new Order({
+     // Validate the email address
+if (!isEmail(userEmail)) {
+  return res.status(400).json({ error: 'Invalid email address' });
+}
+
+    const orderData = {
       books: cart.map((book, index) => ({
         bookId: book._id,
         title: bookTitles[index],
@@ -14,11 +20,153 @@ const createOrder = async (req, res) => {
         price: book.price,
       })),
       total,
-    });
+      paymentMethod,
+      billingDetails,
+    };
+
+    const order = new Order(orderData);
 
     const savedOrder = await order.save();
 
+
+    const mailOptions = {
+      from: process.env.SMTP_USERNAME,
+      to: userEmail, // Use the user's email obtained during checkout
+      subject: 'Order Confirmation',
+      html: `
+        <html>
+          <head>
+            <style>
+              /* Reset some default styles */
+              body, h1, p {
+                margin: 0;
+                padding: 0;
+              }
+    
+              /* Page styles */
+              body {
+                font-family: Arial, sans-serif;
+                background-color: #f4f4f4;
+              }
+    
+              .container {
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 20px;
+                background-color: #fff;
+              }
+    
+              .header {
+                background-color: #4CAF50;
+                color: #fff;
+                padding: 10px;
+                text-align: center;
+              }
+    
+              h1 {
+                font-size: 24px;
+              }
+    
+              .order-details {
+                padding: 20px;
+                border: 1px solid #ddd;
+                margin-top: 20px;
+                background-color: #fff;
+              }
+    
+              /* Additional styles */
+              p {
+                margin: 10px 0;
+                font-size: 16px;
+              }
+    
+              .order-details p {
+                font-weight: bold;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h1>Order Confirmation</h1>
+              </div>
+              <div class="order-details">
+                <p>Thank you for your order.</p>
+                <p>Order ID: ${savedOrder._id}</p>
+                <p>Title: ${orderData.books[0].title}</p>
+                <p>Total: ₹${orderData.total}</p>
+                <p>Payment Method: ${orderData.paymentMethod}</p>
+              </div>
+            </div>
+          </body>
+        </html>
+      `,
+    };
+    
+
+    // Send order details via email
+    const transporter = nodemailer.createTransport({
+      service: 'gmail', // Replace with your email service
+      auth: {
+        user: process.env.SMTP_USERNAME, // Replace with your email
+        pass: process.env.SMTP_PASSWORD, // Replace with your email password
+      },
+    });
+
+   
+
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.error('Email not sent:', error);
+      } else {
+        console.log('Email sent:', info.response);
+      }
+    });
+
     res.status(201).json(savedOrder);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+// Add the rest of the functions (updateOrderStatus, getAllOrders, getOrderById, addFeedback)
+
+const sendOrderDetailsToEmail = async (req, res) => {
+  try {
+    const { orderId, userEmail } = req.body;
+
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Send order details via email
+    const transporter = nodemailer.createTransport({
+      service: 'gmail', // Replace with your email service
+      auth: {
+        user: process.env.SMTP_USERNAME, // Replace with your email
+        pass: process.env.SMTP_PASSWORD, // Replace with your email password
+      },
+    });
+
+    const mailOptions = {
+      from: SMTP_USERNAME,
+      to: userEmail, // Use the user's email
+      subject: 'Order Details',
+      text: `Order details: ${JSON.stringify(order)}`,
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.error('Email not sent:', error);
+      } else {
+        console.log('Email sent:', info.response);
+      }
+    });
+
+    res.status(200).json({ message: 'Order details sent to email.' });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Internal Server Error' });
@@ -28,7 +176,7 @@ const createOrder = async (req, res) => {
 
 const updateOrderStatus = async (req, res) => {
   try {
-    const { orderId, status } = req.body;
+    const { orderId, status, review, rating, userId } = req.body;
 
     // Find the order by ID
     const order = await Order.findById(orderId);
@@ -37,8 +185,16 @@ const updateOrderStatus = async (req, res) => {
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    // Update the order status
+ 
     order.status = status;
+
+   
+    order.feedback = {
+      review,
+      rating,
+      userId,
+    };
+
     await order.save();
 
     res.status(200).json({ status: order.status });
@@ -47,6 +203,7 @@ const updateOrderStatus = async (req, res) => {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
+
 
 
 const getAllOrders = async (req, res) => {
@@ -68,7 +225,6 @@ const getOrderById = async (req, res) => {
   try {
     const orderId = req.params.orderId;
 
-    // Find the order by ID
     const order = await Order.findById(orderId);
 
     if (!order) {
@@ -83,9 +239,38 @@ const getOrderById = async (req, res) => {
 };
 
 
+const addFeedback = async (req, res) => {
+  try {
+    const { orderId, review, rating, userId } = req.body;
+
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Add feedback data
+    order.feedback = {
+      review,
+      rating,
+      userId,
+    };
+
+    await order.save();
+
+    res.status(200).json({ status: order.status });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+
 module.exports = {
     createOrder,
+    sendOrderDetailsToEmail,
     updateOrderStatus,
     getAllOrders,
     getOrderById,
+    addFeedback,
 };
