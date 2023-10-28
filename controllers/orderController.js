@@ -1,18 +1,26 @@
 // controllers/orderController.js
 const Order = require('../models/Order');
+const mongoose = require('mongoose');
 const nodemailer = require('nodemailer');
 const { isEmail } = require('validator');
 
 const createOrder = async (req, res) => {
   try {
-    const { cart, total, bookTitles, paymentMethod, billingDetails, userEmail } = req.body;
+    const { cart, total, bookTitles, paymentMethod, billingDetails, userEmail, userId } = req.body;
 
      // Validate the email address
 if (!isEmail(userEmail)) {
   return res.status(400).json({ error: 'Invalid email address' });
 }
 
+const authToken = req.headers.authorization;
+    
+    if (!authToken) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    
     const orderData = {
+    
       books: cart.map((book, index) => ({
         bookId: book._id,
         title: bookTitles[index],
@@ -22,6 +30,7 @@ if (!isEmail(userEmail)) {
       total,
       paymentMethod,
       billingDetails,
+      userId,
     };
 
     const order = new Order(orderData);
@@ -238,6 +247,25 @@ const getOrderById = async (req, res) => {
   }
 };
 
+const deleteOrder = async (req, res) => {
+  try {
+    const orderId = req.params.orderId;
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Perform the deletion
+    await Order.findByIdAndRemove(orderId);
+
+    res.status(204).send(); // Respond with a 204 No Content status code on successful deletion.
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
 
 const addFeedback = async (req, res) => {
   try {
@@ -266,11 +294,28 @@ const addFeedback = async (req, res) => {
 };
 
 
+
+const getUserOrders = async (req, res) => {
+  try {
+    const userId = req.params.userId; 
+   
+    const userOrders = await Order.find({ userId });
+
+    res.status(200).json(userOrders);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+
 module.exports = {
     createOrder,
     sendOrderDetailsToEmail,
     updateOrderStatus,
     getAllOrders,
     getOrderById,
+    deleteOrder,
     addFeedback,
+    getUserOrders,
 };

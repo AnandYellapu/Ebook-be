@@ -25,6 +25,13 @@ router.post('/place-order', orderController.createOrder);
 router.post('/update-status', orderController.updateOrderStatus);
 router.get('/all-orders', orderController.getAllOrders);
 router.get('/:orderId', orderController.getOrderById);
-router.post('/send-order-details', orderController.sendOrderDetailsToEmail); // New route for sending order details via email
+router.delete('/:orderId', orderController.deleteOrder);
+router.post('/send-order-details', orderController.sendOrderDetailsToEmail);
+router.get('/user-orders/:userId',  authMiddleware, orderController.getUserOrders);
 
 module.exports = router;
+
+
+
+
+

@@ -1,4 +1,3 @@
-// // models/Order.js
 // const mongoose = require('mongoose');
 
 // const orderSchema = new mongoose.Schema({
@@ -9,12 +8,10 @@
 //         ref: 'Book', // Assuming you have a Book model
 //         required: true,
 //       },
-      
 //       title: { 
 //         type: String, 
 //         required: true 
 //       },
-
 //       quantity: {
 //         type: Number,
 //         required: true,
@@ -34,6 +31,17 @@
 //     enum: ['placed', 'shipped', 'delivered'], // Add more statuses as needed
 //     default: 'placed',
 //   },
+//   paymentMethod: {
+//     type: String,
+//     enum: ['Card', 'PayOnDelivery'],
+//     required: true,
+//   },
+//   billingDetails: {
+//     name: { type: String },
+//     address: { type: String },
+//     pincode: { type: String },
+//     phone: { type: String },
+//   },
 //   createdAt: {
 //     type: Date,
 //     default: Date.now,
@@ -46,9 +54,15 @@
 
 
 
+
 const mongoose = require('mongoose');
 
 const orderSchema = new mongoose.Schema({
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User', // Assuming you have a User model
+    required: true,
+  },
   books: [
     {
       bookId: {
@@ -94,13 +108,10 @@ const orderSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
-  user: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User', // Assuming you have a User model for tracking users
-  },
 });
 
 const Order = mongoose.model('Order', orderSchema);
 
 module.exports = Order;
+
 
