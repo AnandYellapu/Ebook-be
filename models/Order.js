@@ -1,6 +1,11 @@
 // const mongoose = require('mongoose');
 
 // const orderSchema = new mongoose.Schema({
+//   userId: {
+//     type: mongoose.Schema.Types.ObjectId,
+//     ref: 'User', // Assuming you have a User model
+//     required: true,
+//   },
 //   books: [
 //     {
 //       bookId: {
@@ -46,11 +51,29 @@
 //     type: Date,
 //     default: Date.now,
 //   },
+//   shippedAt: {
+//     type: Date,
+//   },
+//   deliveredAt: {
+//     type: Date,
+//   },
+
+
+//   rating: {
+//     type: Number,
+//     min: 1,
+//     max: 5,
+//   },
+//   comments: {
+//     type: String,
+//   },
+
 // });
 
 // const Order = mongoose.model('Order', orderSchema);
 
 // module.exports = Order;
+
 
 
 
@@ -70,9 +93,9 @@ const orderSchema = new mongoose.Schema({
         ref: 'Book', // Assuming you have a Book model
         required: true,
       },
-      title: { 
-        type: String, 
-        required: true 
+      title: {
+        type: String,
+        required: true,
       },
       quantity: {
         type: Number,
@@ -82,6 +105,14 @@ const orderSchema = new mongoose.Schema({
         type: Number,
         required: true,
       },
+      rating: {
+        type: Number,
+        min: 1,
+        max: 5,
+      },
+      comments: {
+        type: String,
+      },
     },
   ],
   total: {
@@ -90,7 +121,7 @@ const orderSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['placed', 'shipped', 'delivered'], // Add more statuses as needed
+    enum: ['placed', 'shipped', 'delivered'],
     default: 'placed',
   },
   paymentMethod: {
@@ -108,10 +139,14 @@ const orderSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  shippedAt: {
+    type: Date,
+  },
+  deliveredAt: {
+    type: Date,
+  },
 });
 
 const Order = mongoose.model('Order', orderSchema);
 
 module.exports = Order;
-
-

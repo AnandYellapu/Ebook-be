@@ -4,9 +4,10 @@ const mongoose = require('mongoose');
 const nodemailer = require('nodemailer');
 const { isEmail } = require('validator');
 
+
 const createOrder = async (req, res) => {
   try {
-    const { cart, total, bookTitles, paymentMethod, billingDetails, userEmail, userId } = req.body;
+    const { cart, total, bookTitles, paymentMethod, billingDetails, userEmail, userId , shippedAt, deliveredAt } = req.body;
 
      // Validate the email address
 if (!isEmail(userEmail)) {
@@ -31,6 +32,8 @@ const authToken = req.headers.authorization;
       paymentMethod,
       billingDetails,
       userId,
+      shippedAt,
+      deliveredAt,
     };
 
     const order = new Order(orderData);
@@ -45,54 +48,52 @@ const authToken = req.headers.authorization;
       html: `
         <html>
           <head>
-            <style>
-              /* Reset some default styles */
-              body, h1, p {
-                margin: 0;
-                padding: 0;
-              }
-    
-              /* Page styles */
-              body {
-                font-family: Arial, sans-serif;
-                background-color: #f4f4f4;
-              }
-    
-              .container {
-                max-width: 600px;
-                margin: 0 auto;
-                padding: 20px;
-                background-color: #fff;
-              }
-    
-              .header {
-                background-color: #4CAF50;
-                color: #fff;
-                padding: 10px;
-                text-align: center;
-              }
-    
-              h1 {
-                font-size: 24px;
-              }
-    
-              .order-details {
-                padding: 20px;
-                border: 1px solid #ddd;
-                margin-top: 20px;
-                background-color: #fff;
-              }
-    
-              /* Additional styles */
-              p {
-                margin: 10px 0;
-                font-size: 16px;
-              }
-    
-              .order-details p {
-                font-weight: bold;
-              }
-            </style>
+          <style>
+          
+ body, h1, p {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f4f4f4;
+}
+
+.container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: #fff;
+}
+
+.header {
+  background-color: #4CAF50;
+  color: #fff;
+  padding: 10px;
+  text-align: center;
+}
+
+h1 {
+  font-size: 24px;
+}
+
+.order-details {
+  padding: 20px;
+  border: 1px solid #ddd;
+  margin-top: 20px;
+  background-color: #fff;
+}
+
+p {
+  margin: 10px 0;
+  font-size: 16px;
+}
+
+.order-details p {
+  font-weight: bold;
+}
+</style>
           </head>
           <body>
             <div class="container">
@@ -185,7 +186,7 @@ const sendOrderDetailsToEmail = async (req, res) => {
 
 const updateOrderStatus = async (req, res) => {
   try {
-    const { orderId, status, review, rating, userId } = req.body;
+    const { orderId, status, userId } = req.body;
 
     // Find the order by ID
     const order = await Order.findById(orderId);
@@ -194,17 +195,22 @@ const updateOrderStatus = async (req, res) => {
       return res.status(404).json({ error: 'Order not found' });
     }
 
- 
-    order.status = status;
+  
+  if (status === 'shipped') {
+    if (order.status !== 'shipped') { // Check if it's not already 'shipped' to prevent overwriting
+      order.status = 'shipped';
+      order.shippedAt = new Date(); // Set the 'shippedAt' timestamp here
+      await order.save();
+    }
+  } else if (status === 'delivered') {
+    if (order.status === 'shipped') { // Check if it's already 'shipped' to update 'delivered'
+      order.status = 'delivered';
+      order.deliveredAt = new Date(); // Set the 'deliveredAt' timestamp here
+      await order.save();
+    }
+  }
 
-   
-    order.feedback = {
-      review,
-      rating,
-      userId,
-    };
 
-    await order.save();
 
     res.status(200).json({ status: order.status });
   } catch (error) {
@@ -267,34 +273,6 @@ const deleteOrder = async (req, res) => {
 };
 
 
-const addFeedback = async (req, res) => {
-  try {
-    const { orderId, review, rating, userId } = req.body;
-
-    const order = await Order.findById(orderId);
-
-    if (!order) {
-      return res.status(404).json({ error: 'Order not found' });
-    }
-
-    // Add feedback data
-    order.feedback = {
-      review,
-      rating,
-      userId,
-    };
-
-    await order.save();
-
-    res.status(200).json({ status: order.status });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal Server Error' });
-  }
-};
-
-
-
 const getUserOrders = async (req, res) => {
   try {
     const userId = req.params.userId; 
@@ -309,6 +287,71 @@ const getUserOrders = async (req, res) => {
 };
 
 
+const addFeedback = async (req, res) => {
+  try {
+    const { orderId, bookId, rating, comments } = req.body;
+
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Find the book within the order using bookId
+    const book = order.books.find((book) => book.bookId.toString() === bookId);
+
+    if (!book) {
+      return res.status(404).json({ error: 'Book not found in the order' });
+    }
+
+    // Check if the order has been delivered before allowing feedback
+    if (order.status !== 'delivered') {
+      return res.status(400).json({ error: 'Feedback can only be added for delivered orders' });
+    }
+
+    // Update the book with the provided feedback
+    book.rating = rating;
+    book.comments = comments;
+    await order.save();
+
+    res.status(200).json({ message: 'Feedback added successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+
+// Get rating and comments for a specific book in an order
+const getFeedbackDetails = async (req, res) => {
+  try {
+    const { orderId, bookId } = req.params;
+
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    const book = order.books.find((book) => book.bookId.toString() === bookId);
+
+    if (!book) {
+      return res.status(404).json({ error: 'Book not found in the order' });
+    }
+
+    const feedbackDetails = {
+      rating: book.rating,
+      comments: book.comments,
+    };
+
+    res.status(200).json(feedbackDetails);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+
 module.exports = {
     createOrder,
     sendOrderDetailsToEmail,
@@ -316,6 +359,7 @@ module.exports = {
     getAllOrders,
     getOrderById,
     deleteOrder,
-    addFeedback,
     getUserOrders,
+    addFeedback,
+    getFeedbackDetails,
 };
