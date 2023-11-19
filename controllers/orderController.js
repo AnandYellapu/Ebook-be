@@ -322,8 +322,7 @@ const addFeedback = async (req, res) => {
 };
 
 
-// Get rating and comments for a specific book in an order
-const getFeedbackDetails = async (req, res) => {
+const getOrderBookFeedback = async (req, res) => {
   try {
     const { orderId, bookId } = req.params;
 
@@ -333,24 +332,20 @@ const getFeedbackDetails = async (req, res) => {
       return res.status(404).json({ error: 'Order not found' });
     }
 
+    // Find the book within the order using bookId
     const book = order.books.find((book) => book.bookId.toString() === bookId);
 
     if (!book) {
       return res.status(404).json({ error: 'Book not found in the order' });
     }
 
-    const feedbackDetails = {
-      rating: book.rating,
-      comments: book.comments,
-    };
-
-    res.status(200).json(feedbackDetails);
+    // Return the rating and comments for the book
+    res.status(200).json({ rating: book.rating, comments: book.comments });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
-
 
 module.exports = {
     createOrder,
@@ -361,5 +356,5 @@ module.exports = {
     deleteOrder,
     getUserOrders,
     addFeedback,
-    getFeedbackDetails,
+    getOrderBookFeedback,
 };

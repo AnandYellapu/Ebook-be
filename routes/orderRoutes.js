@@ -32,10 +32,9 @@ router.get('/:orderId', orderController.getOrderById);
 router.delete('/:orderId', orderController.deleteOrder);
 router.post('/send-order-details', orderController.sendOrderDetailsToEmail);
 router.get('/user-orders/:userId', authMiddleware, orderController.getUserOrders);
-// In your router configuration (orderRoutes.js)
 router.post('/add-feedback', orderController.addFeedback);
+router.get('/:orderId/book/:bookId/feedback', orderController.getOrderBookFeedback);
 
-router.get('/:orderId/feedback/:bookId', orderController.getFeedbackDetails);
 
 
 module.exports = router;
