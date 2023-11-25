@@ -210,8 +210,6 @@ const updateOrderStatus = async (req, res) => {
     }
   }
 
-
-
     res.status(200).json({ status: order.status });
   } catch (error) {
     console.error(error);
@@ -236,6 +234,8 @@ const getAllOrders = async (req, res) => {
   }
 };
 
+
+
 const getOrderById = async (req, res) => {
   try {
     const orderId = req.params.orderId;
@@ -252,6 +252,8 @@ const getOrderById = async (req, res) => {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
+
+
 
 const deleteOrder = async (req, res) => {
   try {
@@ -347,6 +349,35 @@ const getOrderBookFeedback = async (req, res) => {
   }
 };
 
+
+
+// Controller to get reviews for a particular book
+ const getBookReviews = async (req, res) => {
+  const { orderId, bookId } = req.params;
+
+  try {
+    // Fetch the order based on orderId
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Find the book in the order's books array
+    const book = order.books.find((b) => b.bookId === bookId);
+
+    if (!book) {
+      return res.status(404).json({ error: 'Book not found in the order' });
+    }
+
+    // Return the reviews for the book
+    res.json({ reviews: book.reviews });
+  } catch (error) {
+    console.error('Error getting book reviews:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
 module.exports = {
     createOrder,
     sendOrderDetailsToEmail,
@@ -357,4 +388,5 @@ module.exports = {
     getUserOrders,
     addFeedback,
     getOrderBookFeedback,
+    getBookReviews,
 };

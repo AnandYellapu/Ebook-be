@@ -35,40 +35,55 @@ const loginUser = async (req, res) => {
   }
 };
 
-
-const getProfile = (req, res) => {
-  const { userId, username, role } = req.user;
-  // You can fetch additional user profile data from your database here
-  res.json({ userId, username, role, additionalProfileData: '...' });
-};
-
-
-const updateProfile = async (req, res) => {
-  const { userId } = req.user;
-  const { username, email, role } = req.body;
+const getProfile = async (req, res) => {
+  const { userId, username, role, profilePhotoUrl } = req.user;
 
   try {
-    // Find the user by their ID
     const user = await User.findById(userId);
-
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Update the user's properties
+    // Additional data retrieval logic, if needed
+    // const additionalData = await retrieveAdditionalData(userId);
+
+    res.json({
+      userId,
+      username,
+      role,
+      profilePhotoUrl: user.profilePhotoUrl,
+      // additionalProfileData: additionalData,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
+
+const updateProfile = async (req, res) => {
+  const { userId } = req.user;
+  const { username, email, role, profilePhotoUrl } = req.body;
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
     if (username) user.username = username;
     if (email) user.email = email;
     if (role) user.role = role;
+    if (profilePhotoUrl) user.profilePhotoUrl = profilePhotoUrl;
 
-    // Save the updated user
     await user.save();
 
-    // Respond with the updated user
     res.json(user);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
+
 
 
 module.exports = {
